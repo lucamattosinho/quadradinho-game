@@ -9,7 +9,7 @@ services:
       - ./frontend:/app
       - /app/node_modules
     working_dir: /app
-    command: ["npm", "run", "dev", "--", "--host"]
+    command: ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
     depends_on:
       - game-service
     networks:
@@ -23,6 +23,15 @@ services:
       - ./game-service:/var/www
     depends_on:
       - db
+    networks:
+      - quadradinho-net
+
+  dictionary-service:
+    build: ./dictionary-service
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./dictionary-service:/var/www
     networks:
       - quadradinho-net
 

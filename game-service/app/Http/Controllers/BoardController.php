@@ -21,6 +21,12 @@ class BoardController extends Controller
         return response()->json($board);
     }
 
+    public function getBoard()
+    {
+        $board = $this->boardService->getCurrentBoard();
+        return response()->json(['board' => $board]);
+    }
+
     /**
      * Display a listing of the resource.
      */
