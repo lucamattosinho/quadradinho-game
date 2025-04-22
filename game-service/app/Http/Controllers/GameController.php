@@ -13,41 +13,85 @@ class GameController extends Controller
     public function validateWord(Request $request, BoardService $board)
     {
         $grid = $board->getCurrentBoard();
-        $path = $request->input('path'); // caminho [{x:1, y:2}, ...]
+        $word = strtolower($request->input('word'));
+        $path = $request->input('path');
 
-        if (!is_array($grid) || !is_array($path)) {
-            return response()->json(['valid' => false, 'reason' => 'Grid ou path ausentes ou malformados.'], 200);
+        if (!is_array($grid) || empty($word)) {
+            return response()->json(['valid' => false, 'reason' => 'Grid ou palavra ausentes ou malformados.'], 200);
         }
-
-        $size = count($grid);
-
-        if (!$board->isPathSequenceValid($path, $size)) {
-            return response()->json(['valid' => false, 'reason' => 'path_invalid'], 200);
-        }
-
-        $word = $board->getWordFromPath($grid, $path);
 
         if (strlen($word) < 4) {
             return response()->json(['valid' => false, 'reason' => 'too_short'], 200);
         }
+        
 
         // Cache local antes de chamar o dicionário
         $cacheKey = 'word_' . strtolower($word);
         if (Cache::has($cacheKey)) {
-            return response()->json(['valid' => true, 'word' => $word, 'cached' => true], 200);
+            return response()->json(['valid' => true, 'word' => $word, 'path' => $path, 'cached' => true], 200);
         }
 
         // Chamar o dictionary-service
-        $response = Http::get(env('DICTIONARY_SERVICE_URL') . '/validate', [
+        $response = Http::post(env('DICTIONARY_SERVICE_URL'), [
             'word' => $word,
         ]);
 
         if ($response->successful() && $response->json('valid')) {
             Cache::put($cacheKey, true, 3600); // 1 hora
-            return response()->json(['valid' => true, 'word' => $word], 200);
+            return response()->json(['valid' => true, 'word' => $word, 'path' => $path], 200);
         }
 
         return response()->json(['valid' => false, 'word' => $word, 'reason' => 'not_found'], 200);
+    }
+
+    private function findPathForWord(array $grid, string $word): ?array
+    {
+        $rows = count($grid);
+        $cols = count($grid[0]);
+
+        for ($y = 0; $y < $rows; $y++) {
+            for ($x = 0; $x < $cols; $x++) {
+                if ($grid[$y][$x] === $word[0]) {
+                    $visited = array_fill(0, $rows, array_fill(0, $cols, false));
+                    $path = $this->dfs($grid, $x, $y, $word, 0, $visited, []);
+                    if ($path !== null) {
+                        return $path;
+                    }
+                }
+            }
+        }
+
+        return null;
+    }
+
+    private function dfs(array &$grid, int $x, int $y, string $word, int $index, array $visited, array $path): ?array
+    {
+        $rows = count($grid);
+        $cols = count($grid[0]);
+
+        if ($x < 0 || $y < 0 || $x >= $cols || $y >= $rows) return null;
+        if ($visited[$y][$x]) return null;
+        if ($grid[$y][$x] !== $word[$index]) return null;
+
+        $visited[$y][$x] = true;
+        $path[] = ['x' => $x, 'y' => $y];
+
+        if ($index === strlen($word) - 1) {
+            return $path;
+        }
+
+        $dirs = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+        foreach ($dirs as [$dx, $dy]) {
+            // Criar nova cópia do mapa de visitados para cada tentativa
+            $newVisited = $visited;
+            $newPath = $path;
+            $result = $this->dfs($grid, $x + $dx, $y + $dy, $word, $index + 1, $newVisited, $newPath);
+            if ($result !== null) {
+                return $result;
+            }
+        }
+
+        return null;
     }
 
 

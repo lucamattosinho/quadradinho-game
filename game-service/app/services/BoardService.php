@@ -7,11 +7,12 @@ class BoardService{
     /**
      * Register services.
      */
-    protected $letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+    protected $letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'X', 'Y', 'Z'];
     protected $board;
 
     public function __construct()
     {
+        $this->letters = $this->generateWeightedLetters();
         $this->generateBoard();
     }
 
@@ -27,6 +28,27 @@ class BoardService{
         }
         $this->board = $board;
         return $board;
+    }
+
+    private function generateWeightedLetters()
+    {
+        // Letras com pesos personalizados (mais vogais)
+        $weights = [
+            'A' => 8, 'E' => 8, 'I' => 6, 'O' => 6, 'U' => 4,
+            'B' => 2, 'C' => 2, 'D' => 2, 'F' => 1, 'G' => 2, 'H' => 1,
+            'J' => 1, 'L' => 2, 'M' => 2, 'N' => 2, 'P' => 2, 'Q' => 1,
+            'R' => 2, 'S' => 2, 'T' => 2, 'V' => 1, 'X' => 1, 'Y' => 1, 'Z' => 1,
+        ];
+
+        $weighted = [];
+
+        foreach ($weights as $letter => $weight) {
+            for ($i = 0; $i < $weight; $i++) {
+                $weighted[] = $letter;
+            }
+        }
+
+        return $weighted;
     }
 
     public function getRandomLetter()

@@ -97,7 +97,8 @@
     console.log(`A palavra é: ${currentWord.value}`)
     try {
       const response = await axios.post('http://localhost:8000/api/validate-word', {
-        path: simplePath
+        word: currentWord.value,
+        path: simplePath,
       })
       console.log(`A resposta é: ${response.data.valid} porque ${response.data.reason}`)
       validationResult.value = response.data.valid
@@ -107,30 +108,66 @@
     }
   }
 
-  const handleKeyPress = (event) => {
-    const key = event.key.toUpperCase() // Pega a tecla pressionada, convertida para maiúscula
-
-  // Verifica se a tecla é uma letra válida no tabuleiro
-    for (let y = 0; y < board.value.length; y++) {
-        for (let x = 0; x < board.value[y].length; x++) {
-        if (board.value[y][x] === key && !isSelectedCoord(x, y)) {
-            selectTileCoord(x, y)
-            return
-        }
-        }
-    }
-
-    // Verifica se a tecla é Enter
-    if (key === 'ENTER' && path.value.length >= 4) {
-        submitWord()
-    }
-
-    // Verifica se a tecla é Backspace
-    if (key === 'BACKSPACE') {
-        path.value.pop()
-    }
-    
+  const getNeighbors = ({ x, y }) => {
+    return [
+      { x: x - 1, y }, // esquerda
+      { x: x + 1, y }, // direita
+      { x, y: y - 1 }, // cima
+      { x, y: y + 1 }  // baixo
+    ].filter(pos =>
+      pos.x >= 0 &&
+      pos.y >= 0 &&
+      pos.y < board.value.length &&
+      pos.x < board.value[0].length &&
+      !isSelectedCoord(pos.x, pos.y)
+    )
   }
+
+const handleKeyPress = (event) => {
+  const key = event.key.toUpperCase()
+
+  // Verifica se é Enter
+  if (key === 'ENTER' && path.value.length >= 4) {
+    submitWord()
+    return
+  }
+
+  // Verifica se é Backspace
+  if (key === 'BACKSPACE') {
+    path.value.pop()
+    return
+  }
+
+  // Primeira letra: procurar em todo o grid
+  if (path.value.length === 0) {
+    // Adiciona todas as posições possíveis da primeira letra
+    const positions = []
+    for (let y = 0; y < board.value.length; y++) {
+      for (let x = 0; x < board.value[y].length; x++) {
+        if (board.value[y][x] === key && !isSelectedCoord(x, y)) {
+          positions.push({ x, y })
+        }
+      }
+    }
+
+    // Se houver mais de uma possibilidade, use uma heurística ou permita escolha futura
+    if (positions.length > 0) {
+      path.value.push(positions[0]) // por enquanto, ainda escolhemos a primeira
+    }
+  } else {
+    // Próxima letra: buscar apenas nos vizinhos do último
+    const last = path.value[path.value.length - 1]
+    const neighbors = getNeighbors(last)
+
+    for (const neighbor of neighbors) {
+      if (board.value[neighbor.y][neighbor.x] === key) {
+        path.value.push(neighbor)
+        return
+      }
+    }
+  }
+}
+
   
   </script>
 
